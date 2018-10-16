@@ -1,0 +1,151 @@
+#include "mbed.h"
+#include "Adafruit_SSD1306.h"
+#include "DHT22.h"
+#include "DS1820.h"
+#include "TCS3472_I2C.h"
+
+
+/* ------------------------------ -------- ------------------------------ */
+/* ------------------------------ Adafruit ------------------------------ */
+/* ------------------------------ -------- ------------------------------ */
+
+class SPIPreInit : public SPI {
+public:
+    SPIPreInit(PinName mosi, PinName miso, PinName clk) : SPI(mosi,miso,clk) {
+        format(8,3);
+        frequency(2000000);
+    };
+};
+
+SPIPreInit gSpi(D11, NC, D13);
+Adafruit_SSD1306_Spi gOled(gSpi, D10, D4, D3);
+Serial PC(USBTX, USBRX);
+TCS3472_I2C rgbc(D5, D4);
+
+
+/*I2C rgbc(D0, D1); //rgbc pins (SDA, SCL)
+const int rgbc_addr = 0x29 << 1; //slave address
+
+DigitalOut led(LED1);
+
+void sensor_init(){      // Initialize color sensor
+    
+    rgbc.frequency(200000);
+    
+    
+    char id_regval[1] = {146};
+    char data[1] = {0};
+    rgbc.write(rgbc_addr,id_regval,1, true);
+    rgbc.read(rgbc_addr,data,1,false);
+    
+    if (data[0]==68) {
+        led = 0;
+        wait (2); 
+        led = 1;
+        } else {
+        led = 1; 
+    }
+    
+    char timing_register[2] = {129,0}; // ATIME <- 0, integration time = 700ms
+    rgbc.write(rgbc_addr,timing_register,2,false);
+    
+    char control_register[2] = {143,0}; // CONTROL <- 0, gain x1
+    rgbc.write(rgbc_addr,control_register,2,false);
+    
+    char enable_register[2] = {128,3}; // ENABLE <- 3, Power ON, RGBC enable
+    rgbc.write(rgbc_addr,enable_register,2,false);
+    }
+
+void sensor_read(int* clear, int* red, int* green, int* blue){
+    
+        char clear_reg[1] = {148};
+        char clear_data[2] = {0,0};
+        rgbc.write(rgbc_addr,clear_reg,1, true);
+        rgbc.read(rgbc_addr,clear_data,2, false);
+        
+        *clear = ((int)clear_data[1] << 😎 | clear_data[0];
+        
+        char red_reg[1] = {150};
+        char red_data[2] = {0,0};
+        rgbc.write(rgbc_addr,red_reg,1, true);
+        rgbc.read(rgbc_addr,red_data,2, false);
+        
+        *red = ((int)red_data[1] << 😎 | red_data[0];
+        
+        char green_reg[1] = {152};
+        char green_data[2] = {0,0};
+        rgbc.write(rgbc_addr,green_reg,1, true);
+        rgbc.read(rgbc_addr,green_data,2, false);
+        
+        *green = ((int)green_data[1] << 😎 | green_data[0];
+        
+        char blue_reg[1] = {154};
+        char blue_data[2] = {0,0};
+        rgbc.write(rgbc_addr,blue_reg,1, true);
+        rgbc.read(rgbc_addr,blue_data,2, false);
+        
+        *blue = ((int)blue_data[1] << 😎 | blue_data[0];
+    
+    }
+    */
+
+/* ------------------------------ ----- ------------------------------ */
+/* ------------------------------ DHT22 ------------------------------ */
+/* ------------------------------ ----- ------------------------------ */
+
+DHT dht22(A5,DHT::DHT22);
+
+/* ------------------------------ ----- ------------------------------ */
+/* ---------------------------CAPTEURS SOL ------------------------------ */
+/* ------------------------------ ----- ------------------------------ */
+
+AnalogIn humidite(A3);
+
+DS1820 probe(A2);
+
+/* ------------------------------ ---- ------------------------------ */
+/* ------------------------------ MAIN ------------------------------ */
+/* ------------------------------ ---- ------------------------------ */
+
+int main() {
+    PC.baud(115200);
+    
+    gOled.printf("%ux%u OLED Display\r\n", gOled.width(), gOled.height());
+    PC.printf("%ux%u OLED Display\r\n", gOled.width(), gOled.height());
+    rgbc.enablePowerAndRGBC();
+    int rgbc_datas[4];
+    
+     if(probe.unassignedProbe(A2))
+     (PC.printf("error"));
+    
+    
+    
+    while(1)
+    {
+
+        rgbc.getAllColors(rgbc_datas);
+        
+        float sum = rgbc_datas[3];
+        float red = (rgbc_datas[0]/257.0);
+        float green = (rgbc_datas[1]/257.0);
+        float blue = (rgbc_datas[2]/257.0);
+        
+        gOled.printf("red: %.1f, green: %.1f, blue: %.1f, clear: %.1f\r\n", red, green, blue, sum);
+        PC.printf("red: %.1f, green: %.1f, blue: %.1f, clear: %.1f\r\n", red, green, blue, sum);
+       
+       
+        probe.convertTemperature(true, DS1820::all_devices);         //Start temperature conversion, wait until ready
+        PC.printf("It is %3.1foC\r\n", probe.temperature());
+        gOled.printf("It is %3.1foC\r\n", probe.temperature());
+        
+        PC.printf("%f\r", humidite.read());
+        gOled.printf("%f\r", humidite.read());
+        
+        
+        int err = dht22.read();
+        if (err == DHT::SUCCESS) { gOled.printf("%.1f %.1f\r", dht22.getTemperature(), dht22.getHumidity()); }
+        else { gOled.printf("Error\r"); }
+        gOled.display();
+        wait(1.0);
+    }
+   }
